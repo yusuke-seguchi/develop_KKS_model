@@ -13,8 +13,10 @@ module COMMON_V
     real(8) :: v, yk, sigma, xme, ke, beta, comnoise
     double precision :: test;    ! variable for debag
 
-    double precision, allocatable :: phi(:,:,:), com(:,:,:)
-    double precision, allocatable :: fcl(:,:), fcc(:,:), cl(:,:), cs(:,:)
+    ! double precision, allocatable :: phi(:,:,:), com(:,:,:)
+    ! double precision, allocatable :: fcl(:,:), fcc(:,:), cl(:,:), cs(:,:)
+    real(8),allocatable :: phi(:,:,:), com(:,:,:)
+    real(8),allocatable :: fcl(:,:), fcc(:,:), cl(:,:), cs(:,:)
 
     real,parameter :: r = 8.31451
 
@@ -27,7 +29,7 @@ program main
     use COMMON_V
     implicit none
 
-    double precision :: pd, phix, phiy, phixx, phiyy, phixy
+    real(8) :: pd, phix, phiy, phixx, phiyy, phixy
     real(8) :: e1, e2, e3, e4, e5, th, eta, deta
     real(8) :: p, pp, pg, gd, gg, fp, dc, c, dphi
     real(8) :: fccw, fcce, fccn, fccs, fccl
@@ -42,7 +44,7 @@ program main
 ! SET THE INITIAL PHASE-CONDITION
     call init_cond
     call outsave
-    call outsave_
+    ! call outsave_
 
     allocate( cs(0:m+1, 0:n+1) ); allocate( cl(0:m+1, 0:n+1) )
     allocate( fcl(0:m+1, 0:n+1) ); allocate( fcc(0:m+1, 0:n+1) )
@@ -123,14 +125,20 @@ program main
             phix = (phi(0,i-1,j) - phi(0,i+1,j))/(2.*dx)
             phiy = (phi(0,i,j-1) - phi(0,i,j+1))/(2.*dy)
 
-            ! test = phi(0,100,j) - phi(0,101,j)
-            ! print '(i5,i5,e12.5)', i, j, test
-        
+            test = phi(0,i-1,j) - phi(0,i+1,j)
 
+            print *, "==test=="
+            print '(i5,e12.5,e12.5,e12.5)',lsave, test, phi(0,i-1,j), phi(0,i+1,j)
+            if (isnan(phi(0,i,j))) goto 1000
+            if (isnan(com(0,i,j))) goto 1000
+        
             phixx = (phi(0,i-1,j) + phi(0,i+1,j) - 2.*p)/(dx*dx)
             phiyy = (phi(0,i,j-1) + phi(0,i,j+1) - 2.*p)/(dy*dy)
             phixy = (phi(0,i+1,j+1) + phi(0,i-1,j-1) - phi(0,i-1,j+1) - phi(0,i-1,j+1))/(2.*dx*2.*dy)
             th = atan(phiy/(phix + 1.e-20))
+
+            ! print *, "==theta=="
+            ! print '(i5,e12.5)',lsave, th
 
             eta = 1. + v*cos(yk*th)
             deta = v*yk*sin(yk*th)
@@ -183,6 +191,15 @@ program main
 ! RENEWAL OF PHASE & CONCENTRATION FIELDS
     do i=0,m+1
         do j=0,n+1
+            ! if (phi(1,i,j).le.1.e-5) then
+            !     phi(0,i,j) = 0.; com(0,i,j) = cs(i,j)
+
+            ! else if (phi(1,i,j).ge.1.-1.e-5) then
+            !     phi(0,i,j) = 1.; com(0,i,j) = cl(i,j)
+            
+            ! else
+            !     phi(0,i,j) = phi(1,i,j); com(0,i,j) = com(1,i,j)
+            ! end if
             phi(0,i,j) = phi(1,i,j); com(0,i,j) = com(1,i,j)
         end do
     end do
@@ -196,12 +213,13 @@ program main
 ! OUTPUT
     lsave = lsave + 1
     if (mod(l,modsave).eq.0) call outsave
-    if (mod(l,modsave).eq.0) call outsave_
+    ! if (mod(l,modsave).eq.0) call outsave_
 
 ! END CONDITION
     if (phi(0,1,n-10).le.0.5) goto 500
     write(6,*)'CALCULATION HAS FINISHED'
-    
+
+    1000    print *,"CALC ERROR"     
 end program main
 
 ! ===================================================
@@ -228,7 +246,7 @@ subroutine cal_cond
     v = 0.03                ! anisotropy ep=ep(1+v*cos(yk*th))
     yk = 4.0                ! anisotropy (yk-fold)
     sigma = 0.093           ! interface energy
-    comnoise = 0.1          ! noise
+    comnoise = 0          ! noise
 
     nc = n; mc = m; dl2 = 2.0*dl/dx; ds2 = 2.0*ds/dx
     cle = (tmpmelt - tmp)/xme; cse = cle*ke
@@ -302,7 +320,6 @@ subroutine mobilitiy
 
     alpha = beta*r*tmp*(1.-ke) / (vm*xme)
     xm = 1./(ep*ep/sigma * (alpha+ep/(dl*sqrt(2.*W))*zeta*fccse*fccle*(cle-cse)**2))
-    print *, xm
 
     dt = dx**2 / (5.*xm*ep**2)
     dt1 = dx**2 / (5.*dl)
@@ -407,7 +424,7 @@ subroutine outsave
 
     do j=1,n
         do i=1,m
-            write(101,300) com(0,i,j)
+            write(101,*) com(0,i,j)
         end do
     end do
 
@@ -416,14 +433,14 @@ subroutine outsave
 
     do j=1,n
         do i=1,m
-            write(101,300) phi(0,i,j)
+            write(101,*) phi(0,i,j)
         end do
     end do
 
     close(101)
     return
 
-300     format(e12.5)
+! 300     format(e12.5)
 1000    write(6,*)'ERROR IN FILE OPEN'
 
 end subroutine outsave
