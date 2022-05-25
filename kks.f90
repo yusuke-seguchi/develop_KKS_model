@@ -92,8 +92,8 @@ program main
         end do
     end do
 
-    print '(i10.5, e12.5)', lsave, com(0, 10, 10)
-    print '(i10.5, e12.5)', lsave, com(1, 10, 10)
+    ! print '(i10.5, e12.5)', lsave, com(0, 10, 10)
+    ! print '(i10.5, e12.5)', lsave, com(1, 10, 10)
 
 ! GOVERNING EQUATIONS
     do i = 1, mc
@@ -212,8 +212,8 @@ subroutine cal_cond
     use COMMON_V
     implicit none
 
-    m = 250                 ! x-direction mesh number
-    n = 250                 ! y-direction mesh number
+    m = 750                 ! x-direction mesh number
+    n = 750                 ! y-direction mesh number
     dx = 1.e-8              ! mesh size
     dy = 1.e-8              ! mesh size
     dl = 3.e-9              ! dl
