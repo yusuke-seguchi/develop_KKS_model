@@ -6,12 +6,12 @@
 
 module COMMON_V
     integer :: l=0, i=1, j=1, m, n, mc, nc
-    integer :: triangle=15, modsave=1, lsave=0
+    integer :: triangle=15, modsave=2000, lsave=0
     real(8) :: xm, ep, ep2, W
     real(8) :: dx, dy, dt, dt1, ds, dl, dl2, ds2
     real(8) :: cle, cse, tmpmelt, tmp, vm, c0
     real(8) :: v, yk, sigma, xme, ke, beta, comnoise
-    double precision :: test;    ! variable for debag
+    real(8) :: test1, test2, test3, test4, test5, test6, test7, test8, test9, test10, test11, test12, test13, test14   ! variable for debag
 
     ! double precision, allocatable :: phi(:,:,:), com(:,:,:)
     ! double precision, allocatable :: fcl(:,:), fcc(:,:), cl(:,:), cs(:,:)
@@ -72,10 +72,13 @@ program main
             if (phi(0,i,j).lt.0.001) then
                 cl(i,j) = com(0,i,j)
                 cs(i,j) = cl(i,j)/(a + (1.-a)*cl(i,j))
+                test6 = cl(i,j)
 
             else if (phi(0,i,j).gt.0.999) then
                 cs(i,j) = com(0,i,j)
                 cl(i,j) = a*cs(i,j)/(1. + (a-1.)*cs(i,j))
+                test4 = cl(i,j)
+                test7 = cs(i,j)
             
             else
                 aa = pp * (1.-a)
@@ -84,12 +87,50 @@ program main
 
                 cs(i,j) = (bb - sqrt(bb*bb - 4.*aa*cc))/(2.*aa)
                 cl(i,j) = (cc - pp*cs(i,j))/(1.-pp)
+                test5 = bb - sqrt(bb*bb - 4.*aa*cc)
+                test8 = cl(i,j)
+
+            end if
+            
+            if (isnan(cl(i,j))) then
+                print '(a,2x,e12.5)', 'cl(i,j)', cl(i,j)
+                print '(a,2x,e12.5)', 'test4', test4
+                print '(a,2x,e12.5)', 'test6', test6
+                print '(a,2x,e12.5)', 'test8', test8
+                goto 1000
             end if
 
+
             fcl(i,j) = r*tmp/vm*log( cl(i,j)/(1.-cl(i,j)) )
+            test13 = cl(i,j)/(1.-cl(i,j))
+            if (isnan(fcl(i,j))) then
+                print '(a,2x,e12.5)', 'fcl(i,j)', fcl(i,j)
+                print '(a,2x,e12.5)', 'cl(i,j)', cl(i,j)
+                print '(a,2x,e12.5)', 'cl(i,j)/(1.-cl(i,j))', test13
+                print '(a,2x,e12.5)', 'test4', test4
+                print '(a,2x,e12.5)', 'test6', test6
+                print '(a,2x,e12.5)', 'test8', test8
+                goto 1000
+            end if
+
             fccl = r*tmp/vm/(cl(i,j)*(1.-cl(i,j)))
             fccs = r*tmp/vm/(cs(i,j)*(1.-cs(i,j)))
             fcc(i,j) = fccl*fccs/((1.-pp)*fccs + pp*fccl)
+
+            test3 = cl(i,j)/(1.-cl(i,j))
+            ! print '(a,2x,e12.5,2x,e12.5)','log_fcl_content', test3, log(test3)
+            if (isnan(test3)) then
+                print '(a,2x,e12.5)', 'test4', test4
+                print '(a,2x,e12.5)', 'sqrt(bb*bb - 4.*aa*cc)', sqrt(bb*bb - 4.*aa*cc)
+                print '(a,2x,e12.5)', 'bb - sqrt(bb*bb - 4.*aa*cc)', test5
+                print '(a,2x,e12.5)', 'test6', test6
+                print '(a,2x,e12.5)', 'test7', test7
+                print '(a,2x,e12.5)', 'test8', test8
+                print '(a,2x,e12.5,2x,e12.5)','aa and bb', aa, bb
+                print '(a,2x,e12.5,2x,e12.5)','cc and cs', cc, cs(i,j)
+                print '(a,2x,e12.5,2x,e12.5)','cl and 1-cl', cl(i,j), 1.-cl(i,j)
+                goto 1000
+            end if
 
         end do
     end do
@@ -120,15 +161,19 @@ program main
 
                 gg = pg*log( (1.-cse)/(1.-cle) * (1.-cl(i,j))/(1.-cs(i,j)) )
 
+                test2 = (1.-cse)/(1.-cle) * (1.-cl(i,j))/(1.-cs(i,j))
+                ! print '(a,2x,e12.5,2x,e12.5)','gg_log_content', test2, log(test2)
+                if (isnan(test2)) goto 1000
+
                 fp = r*tmp/vm*gg - W*gd
 
             phix = (phi(0,i-1,j) - phi(0,i+1,j))/(2.*dx)
             phiy = (phi(0,i,j-1) - phi(0,i,j+1))/(2.*dy)
 
-            test = phi(0,i-1,j) - phi(0,i+1,j)
+            ! test1 = phi(0,i-1,j) - phi(0,i+1,j)
 
-            print *, "==test=="
-            print '(i5,e12.5,e12.5,e12.5)',lsave, test, phi(0,i-1,j), phi(0,i+1,j)
+            ! print *, "==test=="
+            ! print '(i5,2x,e12.5,2x,e12.5,2x,e12.5)',lsave, test1, phi(0,i-1,j), phi(0,i+1,j)
             if (isnan(phi(0,i,j))) goto 1000
             if (isnan(com(0,i,j))) goto 1000
         
@@ -162,18 +207,51 @@ program main
             fccs = 2.*d1/fcc(i,j)* d4/fcc(i,j+1) / (d1/fcc(i,j) + d4/fcc(i,j+1))
             fccn = 2.*d1/fcc(i,j)* d5/fcc(i,j-1) / (d1/fcc(i,j) + d5/fcc(i,j-1))
 
-            xj1 = (-fcl(i,j) + fcl(i-1,j))/dx * fccw
-            xj2 = (-fcl(i,j) + fcl(i+1,j))/dx * fcce
-            xj3 = (-fcl(i,j) + fcl(i,j+1))/dy * fccs
-            xj4 = (-fcl(i,j) + fcl(i,j-1))/dy * fccn
+            xj1 = ( fcl(i,j) - fcl(i-1,j))/dx * fccw
+            xj2 = ( fcl(i,j) - fcl(i+1,j))/dx * fcce
+            xj3 = ( fcl(i,j) - fcl(i,j+1))/dy * fccs
+            xj4 = ( fcl(i,j) - fcl(i,j-1))/dy * fccn
 
             dc = (xj1 + xj2)/dx + (xj3 + xj4)/dy
 
             end if
 
         phi(1,i,j) = p + dphi*dt; com(1,i,j) = c + dc*dt
+
+        ! print '(a,2x,e12.5)', 'dc', dc
+        ! print '(a,2x,e12.5)', 'fccw', fcc
+        ! print '(a,2x,e12.5)', 'dt', dt
+
+        if (com(1,i,j).le.0.) then
+            print '(a,2x,e12.5)', 'dc', dc
+            print '(a,2x,e12.5)', 'xj1', xj1
+            print '(a,2x,e12.5)', 'xj2', xj2
+            print '(a,2x,e12.5)', 'xj3', xj3
+            print '(a,2x,e12.5)', 'xj4', xj4
+            print '(a,2x,e12.5)', 'fccw', fccw
+            print '(a,2x,e12.5)', 'fcce', fcce
+            print '(a,2x,e12.5)', 'fccs', fccs
+            print '(a,2x,e12.5)', 'fccn', fccn
+            print '(a,2x,e12.5)', 'dt', dt
+            print '(a,2x,e12.5)', 'dt*dc', dt*dc
+            print '(a,2x,e12.5)', 'c', c
+            goto 1000
+        end if
         end do
     end do
+
+    print '(a,2x,e12.5)', 'dc', dc
+    print '(a,2x,e12.5)', 'xj1', xj1
+    print '(a,2x,e12.5)', 'xj2', xj2
+    print '(a,2x,e12.5)', 'xj3', xj3
+    print '(a,2x,e12.5)', 'xj4', xj4
+    print '(a,2x,e12.5)', 'fccw', fccw
+    print '(a,2x,e12.5)', 'fcce', fcce
+    print '(a,2x,e12.5)', 'fccs', fccs
+    print '(a,2x,e12.5)', 'fccn', fccn
+    print '(a,2x,e12.5)', 'dt', dt
+    print '(a,2x,e12.5)', 'dt*dc', dt*dc
+    print '(a,2x,e12.5)', 'c', c
 
 ! END GOVERNING EQUAITION CALCULATIONS
 
@@ -213,7 +291,8 @@ program main
 ! OUTPUT
     lsave = lsave + 1
     if (mod(l,modsave).eq.0) call outsave
-    ! if (mod(l,modsave).eq.0) call outsave_
+    if (mod(l,modsave).eq.0) call output(lsave, cs, cl, 'cl_cs')
+    if (mod(l,modsave).eq.0) call output(lsave, fcc, fcl, 'fcl_fcs')
 
 ! END CONDITION
     if (phi(0,1,n-10).le.0.5) goto 500
@@ -314,7 +393,7 @@ subroutine mobilitiy
         pp1 = p1**3 * (10. - 15.*p1 + 6.*p1*p1)
         pp2 = p2**3 * (10. - 15.*p2 + 6.*p2*p2)
         fun1 = pp1*(1.-pp1) / ((1.-pp1)*fccse + pp1*fccle) / (p1*(1.-p1))
-        fun2 = pp2*(1.-pp2) / ((1.-pp2)*fccse + pp1*fccle) / (p2*(1.-p2)) !　pp1*fccleがあやしい。
+        fun2 = pp2*(1.-pp2) / ((1.-pp2)*fccse + pp2*fccle) / (p2*(1.-p2)) !　pp1*fccleがあやしい。
         zeta = zeta + (fun1 + fun2)*0.001/2.
     end do
 
@@ -445,57 +524,52 @@ subroutine outsave
 
 end subroutine outsave
 
-subroutine outsave_
+
+!===================================
+! file output of results
+! VTK file can be visualized by ParaView software.
+! ParaView can be downloaded at https://www.paraview.org/
+!===================================
+subroutine output(iout,cc,pp,name)
     use COMMON_V
     implicit none
-
-    character*3 :: out_num
-    character*15 :: fpout
-    integer :: one, ten, hand
-
-    one = mod(lsave, 10)
-    ten = mod(int(real(lsave)/10.), 10)
-    hand = mod(int(real(lsave)/100.), 10)
-
-    one = 48 + one; ten = 48 + ten; hand = 48 + hand;
-    out_num = char(hand)//char(ten)//char(one)
+   
+    integer :: iout
+    double precision, dimension(m,n) :: pp
+    double precision, dimension(m,n) :: cc
     
-    fpout = "output_"//out_num//".vtk"
-    open(101,file=fpout, err=1000)
+    character :: name
+    character*30::filename
+    ! integer :: m,n
+   
+    write(filename,'(a,i4.4,a)') name,iout,'.vtk'
+    open(101,file=filename)
     write(101,'(a)') '# vtk DataFile Version 3.0'
     write(101,'(a)') 'output.vtk'
     write(101,'(a)') 'ASCII'
     write(101,'(a)') 'DATASET STRUCTURED_POINTS'
-    write(101,'(a,3i5)') 'DIMENSIONS',mc,nc,1
+    write(101,'(a,3i5)') 'DIMENSIONS',m,n,1
     write(101,'(a,3f4.1)')'ORIGIN' ,0.0,0.0,0.0
     write(101,'(a,3i2)')'ASPECT_RATIO',1,1,1
-    write(101,'(a,1i11)')'POINT_DATA',mc*nc*1
+    write(101,'(a,1i11)')'POINT_DATA',m*n*1
     write(101,'(a)')'SCALARS concentration double'
     write(101,'(a)')'LOOKUP_TABLE default'
-
-    do j=1,n
+     do j=1,n
         do i=1,m
-            write(101,300) com(1,i,j)
+            write(101,*) cc(i,j)
         end do
-    end do
-
+     end do
     write(101,'(a)')'SCALARS phase_field double'
     write(101,'(a)')'LOOKUP_TABLE default'
-
     do j=1,n
         do i=1,m
-            write(101,300) phi(1,i,j)
-        end do
-    end do
-
-    close(101)
+       write(101,*) pp(i,j)
+      end do
+     end do
+     close(101)
+   
     return
-
-! 410     format(i4, i4, i10)
-300     format(e12.5)
-1000    write(6,*)'ERROR IN FILE OPEN'
-
-end subroutine outsave_
+   end
 
 
  

@@ -1,0 +1,52 @@
+{
+    "configurations": [
+        {
+            "type": "node-terminal",
+            "name": "JavaScript Debug Terminal",
+            "request": "launch",
+            "cwd": "${workspaceFolder}"
+        }
+    ],
+    
+        // See https://go.microsoft.com/fwlink/?LinkId=733558
+        // for the documentation about the tasks.json format
+        "version": "2.0.0",
+        "tasks": [
+            {
+                "label": "gfortran debug",
+                "type": "shell",
+                "options": {
+                    "shell": {
+                        "args": [],
+                    }
+                },
+                "command": "gfortran",
+                "args": [
+                    "-g",
+                    "-O0",
+                    "-o",
+                    "/home/matsuo/${workspaceFolderBasename}/${fileBasenameNoExtension}.out",
+                    "${fileBasename}"
+                ],
+                "group": {
+                    "kind": "build",
+                    "isDefault": true
+                },
+                "presentation": {
+                    "echo": true,
+                    "reveal": "always",
+                    "focus": true,
+                    "panel": "shared",
+                    "showReuseMessage": true,
+                    "clear": false
+                }
+            },
+            {
+                "label": "My exec",
+                "type": "shell",
+                "command": "${workspaceFolderBasename}/${fileBasenameNoExtension}.out",
+                "group": "test"
+            }
+        ]
+    
+}
