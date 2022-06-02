@@ -6,10 +6,16 @@
 
 MODULE COMMON_V 
 <<<<<<< HEAD
+<<<<<<< HEAD
     INTEGER::L=-1,I=1,J=1,M,N,MC,NC 
     INTEGER::TRIANGLE=15,MODSAVE=2000,LSAVE=0 
     REAL(8)::XM,EP,EP2,W 
     REAL(8)::DX,DY,DT,DT1,DS,DL,DL2,DS2 
+=======
+    INTEGER::L=0,I=1,J=l,M,N,MC,NC 
+    INTEGER::TRIANGLE=15,MODSAVE=2000,LSAVE=O 
+    REAL(8) ::XM.EP,EP2,W REAL(8)::DX.DY,DT,OT1,DS.DL,DL2.DS2 
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
 =======
     INTEGER::L=0,I=1,J=l,M,N,MC,NC 
     INTEGER::TRIANGLE=15,MODSAVE=2000,LSAVE=O 
@@ -20,7 +26,11 @@ MODULE COMMON_V
 
     REAL(8),ALLOCATABLE:: PHI(:,:,:),COM(:,:,:) 
 <<<<<<< HEAD
+<<<<<<< HEAD
     REAL(8),ALLOCATABLE:: FCL(:,:),FCC(:,:),CL(:,:),CS(:,:) 
+=======
+    REAL(8) ALLOCATABLE:: FCL(:,:),FCC(:,:),CL(:,:),CS(:,:) 
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
 =======
     REAL(8) ALLOCATABLE:: FCL(:,:),FCC(:,:),CL(:,:),CS(:,:) 
 >>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
@@ -32,7 +42,10 @@ END MODULE COMMON_V
 ! =================
 PROGRAM MAIN 
 <<<<<<< HEAD
+<<<<<<< HEAD
 
+=======
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
 =======
 >>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
     USE COMMON_V
@@ -41,9 +54,15 @@ PROGRAM MAIN
     REAL(8)::E1,E2,E3,E4,E5,TH,ETA,DETA 
     REAL(8)::P,PP,PG,GD,GG,FP,DC,C,DPHI 
 <<<<<<< HEAD
+<<<<<<< HEAD
     REAL(8)::FCCW,FCCE,FCCN,FCCS,FCCL 
     REAL(8)::XJ1,XJ2,XJ3,XJ4 
     REAL(8)::D1,D2,D3,D4,D5 
+=======
+    REAL(8)::FCCW.FCCE,FCCN,FCCS,FCCL 
+    REAL(8)::XJ1,XJ2,XJ3,XJ4 
+    REAL(8)::D1,D2,D3,D4.D5 
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
 =======
     REAL(8)::FCCW.FCCE,FCCN,FCCS,FCCL 
     REAL(8)::XJ1,XJ2,XJ3,XJ4 
@@ -60,16 +79,22 @@ PROGRAM MAIN
 !  SET THE INITIAL PHASE-CONDITION 
 ! ------------------
 <<<<<<< HEAD
+<<<<<<< HEAD
     CALL INIT_COND
     CALL OUTSAVE 
 
     ALLOCATE( CS(0:M+1,0:N+1) )
     ALLOCATE( CL(0:M+1,0:N+1) ) 
 =======
+=======
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
     CALL INIT_COND 
 
     ALLOCATE( CS(0:M+1,0:N+1) )
     ALLOCATE( CL(0:M+1,0:N+l) ) 
+<<<<<<< HEAD
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
+=======
 >>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
     ALLOCATE( FCL(0:M+1,0:N+1) )
     ALLOCATE( FCC(0:M+1,0:N+1) ) 
@@ -86,6 +111,7 @@ PROGRAM MAIN
 
     WRITE(6,*)'SET ALL THE CALCULATION CONDITIONS' 
     WRITE(6,*)'NOW CALCULATING ....... ' 
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 ! =================
@@ -587,6 +613,8 @@ END SUBROUTINE OUTSAVE
 
 ! end subroutine outsave
 =======
+=======
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
     
 C CALCULATE THE GOVERNING EQUATIONS 
 500 L=L+l 
@@ -834,4 +862,7 @@ CLOSE(14)
 RETURN 
 410 FORIIAT(l4, 14. 110) 300 FORMAT(l5, 1.E12.5,E12.5) 1000 WRITE(6,*)'ERROR IN FILE OPEN' 
 END 
+<<<<<<< HEAD
+>>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
+=======
 >>>>>>> 9823a552b8ad21c7170988d98753471ae4ee5ad5
