@@ -404,6 +404,8 @@ subroutine mobilitiy
     dt1 = dx**2 / (5.*dl)
     dt = dmin1(dt, dt1)
 
+    print '(a,2x,e12.5)', 'mobility', xm
+
     return
 end subroutine mobilitiy
 
