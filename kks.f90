@@ -4,579 +4,559 @@
 ! 大出真知子、鈴木俊夫、”フェーズフィールドシミュレーション入門”、鋳造工学　第73巻（2001）第5号
 ! ===================================================
 
-module COMMON_V
-    integer :: l=0, i=1, j=1, m, n, mc, nc
-    integer :: triangle=15, modsave=2000, lsave=0
-    real(8) :: xm, ep, ep2, W
-    real(8) :: dx, dy, dt, dt1, ds, dl, dl2, ds2
-    real(8) :: cle, cse, tmpmelt, tmp, vm, c0
-    real(8) :: v, yk, sigma, xme, ke, beta, comnoise
-    real(8) :: test1, test2, test3, test4, test5, test6, test7, test8, test9, test10, test11, test12, test13, test14   ! variable for debag
+MODULE COMMON_V 
+    INTEGER::L=0,I=1,J=1,M,N,MC,NC 
+    INTEGER::TRIANGLE=15,MODSAVE=2000,LSAVE=0 
+    REAL(8)::XM,EP,EP2,W 
+    REAL(8)::DX,DY,DT,DT1,DS,DL,DL2,DS2 
+    REAL(8)::CLE,CSE,TEMPMELT,TEMP,VM,C0 
+    REAL(8)::V,YK,SIGMA,XME,KE,BETA,COMNOISE 
 
-    ! double precision, allocatable :: phi(:,:,:), com(:,:,:)
-    ! double precision, allocatable :: fcl(:,:), fcc(:,:), cl(:,:), cs(:,:)
-    real(8),allocatable :: phi(:,:,:), com(:,:,:)
-    real(8),allocatable :: fcl(:,:), fcc(:,:), cl(:,:), cs(:,:)
+    REAL(8),ALLOCATABLE:: PHI(:,:,:),COM(:,:,:) 
+    REAL(8),ALLOCATABLE:: FCL(:,:),FCC(:,:),CL(:,:),CS(:,:) 
+    REAL,PARAMETER::R=8.314
+END MODULE COMMON_V
 
-    real,parameter :: r = 8.31451
-
-end module COMMON_V
-
-! ===================================================
+! ================= 
 ! MAIN PROGRAM
-! ===================================================
-program main
-    use COMMON_V
-    implicit none
+! =================
+PROGRAM MAIN 
 
-    real(8) :: pd, phix, phiy, phixx, phiyy, phixy
-    real(8) :: e1, e2, e3, e4, e5, th, eta, deta
-    real(8) :: p, pp, pg, gd, gg, fp, dc, c, dphi
-    real(8) :: fccw, fcce, fccn, fccs, fccl
-    real(8) :: xj1, xj2, xj3, xj4
-    real(8) :: d1, d2, d3, d4, d5
-    real(8) :: a, aa, bb, cc
+    USE COMMON_V
+    IMPLICIT NONE 
+    REAL(8)::PD,PHIX,PHIY,PHIXX,PHIYY,PHIXY 
+    REAL(8)::E1,E2,E3,E4,E5,TH,ETA,DETA 
+    REAL(8)::P,PP,PG,GD,GG,FP,DC,C,DPHI 
+    REAL(8)::FCCW,FCCE,FCCN,FCCS,FCCL 
+    REAL(8)::XJ1,XJ2,XJ3,XJ4 
+    REAL(8)::D1,D2,D3,D4,D5 
+    REAL(8)::A,AA,BB,CC 
 
+! --------------------
+!  READ CALCULATION CONDITION 
+! --------------------
+    CALL CAL_COND 
 
-! READ CALCULATION CONDITION
-    call cal_cond
+! ------------------
+!  SET THE INITIAL PHASE-CONDITION 
+! ------------------
+    CALL INIT_COND
+    CALL OUTSAVE 
 
-! SET THE INITIAL PHASE-CONDITION
-    call init_cond
-    call outsave
-    ! call outsave_
+    ALLOCATE( CS(0:M+1,0:N+1) )
+    ALLOCATE( CL(0:M+1,0:N+1) ) 
+    ALLOCATE( FCL(0:M+1,0:N+1) )
+    ALLOCATE( FCC(0:M+1,0:N+1) ) 
 
-    allocate( cs(0:m+1, 0:n+1) ); allocate( cl(0:m+1, 0:n+1) )
-    allocate( fcl(0:m+1, 0:n+1) ); allocate( fcc(0:m+1, 0:n+1) )
+! -------------------
+!  SET THE PHASE-FIELD PARAMETERS (& TIMESTEP) 
+! ------------------
+    EP=SQRT(18./2.2*DX*SIGMA)
+    EP2=EP*EP 
+    W=2.2*SIGMA/DX 
+    CALL MOBILITY
 
-! SET THE PHASE-FIELD PARAMETERS (&TIMESTEP)
-    ep = sqrt(18./2.2*dx*sigma); ep2 = ep*ep
-    W = 2.2*sigma/dx
-    call mobilitiy
-    a = cle/cse * (1.-cse)/(1.-cle)
+    A=CLE/CSE*(1-CSE)/(1-CLE) 
 
-    write(6,*)'SET ALL THE CALCULATION CONDITIONS'
-    write(6,*)'NOW CALCULATING.....'
+    WRITE(6,*)'SET ALL THE CALCULATION CONDITIONS' 
+    WRITE(6,*)'NOW CALCULATING ....... ' 
 
-! ===================================================
+! =================
 ! CALCULATE THE GOVERNING EQUATIONS
-! ===================================================
-500 l = l + 1
+! ================= 
 
-! CALCULATION CS & CL
-    do i = 0, mc + 1
-        do j = 0, nc + 1
-            p = phi(0,i,j)
-            pp = p**3 * (10. - 15.*p + 6.*p*p) 
+500 L=L+1
 
-            if (phi(0,i,j).lt.0.001) then
-                cl(i,j) = com(0,i,j)
-                cs(i,j) = cl(i,j)/(a + (1.-a)*cl(i,j))
-                test6 = cl(i,j)
-
-            else if (phi(0,i,j).gt.0.999) then
-                cs(i,j) = com(0,i,j)
-                cl(i,j) = a*cs(i,j)/(1. + (a-1.)*cs(i,j))
-                test4 = cl(i,j)
-                test7 = cs(i,j)
-            
-            else
-                aa = pp * (1.-a)
-                bb = pp + (1.-pp)*a + com(0,i,j)*(1.-a)
-                cc = com(0,i,j)
-
-                cs(i,j) = (bb - sqrt(bb*bb - 4.*aa*cc))/(2.*aa)
-                cl(i,j) = (cc - pp*cs(i,j))/(1.-pp)
-                test5 = bb - sqrt(bb*bb - 4.*aa*cc)
-                test8 = cl(i,j)
-
-            end if
-            
-            if (isnan(cl(i,j))) then
-                print '(a,2x,e12.5)', 'cl(i,j)', cl(i,j)
-                print '(a,2x,e12.5)', 'test4', test4
-                print '(a,2x,e12.5)', 'test6', test6
-                print '(a,2x,e12.5)', 'test8', test8
-                goto 1000
-            end if
-
-
-            fcl(i,j) = r*tmp/vm*log( cl(i,j)/(1.-cl(i,j)) )
-            test13 = cl(i,j)/(1.-cl(i,j))
-            if (isnan(fcl(i,j))) then
-                print '(a,2x,e12.5)', 'fcl(i,j)', fcl(i,j)
-                print '(a,2x,e12.5)', 'cl(i,j)', cl(i,j)
-                print '(a,2x,e12.5)', 'cl(i,j)/(1.-cl(i,j))', test13
-                print '(a,2x,e12.5)', 'test4', test4
-                print '(a,2x,e12.5)', 'test6', test6
-                print '(a,2x,e12.5)', 'test8', test8
-                goto 1000
-            end if
-
-            fccl = r*tmp/vm/(cl(i,j)*(1.-cl(i,j)))
-            fccs = r*tmp/vm/(cs(i,j)*(1.-cs(i,j)))
-            fcc(i,j) = fccl*fccs/((1.-pp)*fccs + pp*fccl)
-
-            test3 = cl(i,j)/(1.-cl(i,j))
-            ! print '(a,2x,e12.5,2x,e12.5)','log_fcl_content', test3, log(test3)
-            if (isnan(test3)) then
-                print '(a,2x,e12.5)', 'test4', test4
-                print '(a,2x,e12.5)', 'sqrt(bb*bb - 4.*aa*cc)', sqrt(bb*bb - 4.*aa*cc)
-                print '(a,2x,e12.5)', 'bb - sqrt(bb*bb - 4.*aa*cc)', test5
-                print '(a,2x,e12.5)', 'test6', test6
-                print '(a,2x,e12.5)', 'test7', test7
-                print '(a,2x,e12.5)', 'test8', test8
-                print '(a,2x,e12.5,2x,e12.5)','aa and bb', aa, bb
-                print '(a,2x,e12.5,2x,e12.5)','cc and cs', cc, cs(i,j)
-                print '(a,2x,e12.5,2x,e12.5)','cl and 1-cl', cl(i,j), 1.-cl(i,j)
-                goto 1000
-            end if
-
-        end do
-    end do
-
-    ! print '(i10.5, e12.5)', lsave, com(0, 10, 10)
-    ! print '(i10.5, e12.5)', lsave, com(1, 10, 10)
-
-! GOVERNING EQUATIONS
-    do i = 1, mc
-        do j = 1, nc
-
-            p = phi(0,i,j); c = com(0,i,j)
-
-! TIME SAVING
-            pd = (phi(0,i+1,j) + phi(0,i-1,j) + phi(0,i,j+1) + phi(0,i,j-1))/4.
-            if (pd.le.1.e-5) then
-                dphi = 0.
-                dc = dl*( (com(0,i,j+1) + com(0,i,j-1) - 2.*c)/(dy*dy) + (com(0,i+1,j) + com(0,i-1,j) - 2.*c)/(dx*dx) )
-            
-            else if (pd.ge.(1.-1.e-5)) then
-                dphi = 0.
-                dc = ds*( (com(0,i,j+1) + com(0,i,j-1) - 2.*c)/(dy*dy) + (com(0,i+1,j) + com(0,i-1,j) - 2.*c)/(dx*dx) )
-
-! NON-TIME SAVING (140行目)
-            else
-                pg = 30.*p*p*(1-p)*(1-p)
-                gd = 2.*p*(1.-p)*(1.-2.*p)
-
-                gg = pg*log( (1.-cse)/(1.-cle) * (1.-cl(i,j))/(1.-cs(i,j)) )
-
-                test2 = (1.-cse)/(1.-cle) * (1.-cl(i,j))/(1.-cs(i,j))
-                ! print '(a,2x,e12.5,2x,e12.5)','gg_log_content', test2, log(test2)
-                if (isnan(test2)) goto 1000
-
-                fp = r*tmp/vm*gg - W*gd
-
-            phix = (phi(0,i-1,j) - phi(0,i+1,j))/(2.*dx)
-            phiy = (phi(0,i,j-1) - phi(0,i,j+1))/(2.*dy)
-
-            ! test1 = phi(0,i-1,j) - phi(0,i+1,j)
-
-            ! print *, "==test=="
-            ! print '(i5,2x,e12.5,2x,e12.5,2x,e12.5)',lsave, test1, phi(0,i-1,j), phi(0,i+1,j)
-            if (isnan(phi(0,i,j))) goto 1000
-            if (isnan(com(0,i,j))) goto 1000
+! ----------------
+! CALCULATE CS &CL 
+! -----------------
+    DO I=0, MC+1 
+    DO J=0, NC+1 
+         P=PHI(0, I, J) 
+         PP=P**3*(10.-15.*P+6.*P*P) 
+    
+        IF (PHI(0, I, J).LT.0.001) THEN 
+         CL(I, J) = COM(0, I, J) 
+         CS(I, J) = CL(I, J) / (A + (1. - A)*CL(I, J)) 
         
-            phixx = (phi(0,i-1,j) + phi(0,i+1,j) - 2.*p)/(dx*dx)
-            phiyy = (phi(0,i,j-1) + phi(0,i,j+1) - 2.*p)/(dy*dy)
-            phixy = (phi(0,i+1,j+1) + phi(0,i-1,j-1) - phi(0,i-1,j+1) - phi(0,i-1,j+1))/(2.*dx*2.*dy)
-            th = atan(phiy/(phix + 1.e-20))
+        ELSE IF(PHI(0, I, J).GT.0.999) THEN 
+         CS(I, J) = COM(0, I, J) 
+         CL(I, J) = A*CS(I, J) / (1. + (A - 1.)*CS(I, J)) 
+        
+        ELSE 
+         AA = PP*(1. -A) 
+         BB = PP + (1.-PP)*A+COM(0, I, J)*(1-A)
+         CC = COM(0, I, J)
 
-            ! print *, "==theta=="
-            ! print '(i5,e12.5)',lsave, th
+         CS(I, J) = (BB - SQRT(BB*BB - 4.*AA*CC))/(2.*AA) 
+         CL(I, J) = (CC - PP*CS(I, J)) / (1. -PP) 
+        END IF
 
-            eta = 1. + v*cos(yk*th)
-            deta = v*yk*sin(yk*th)
+        FCL(I, J) = R*TEMP/VM * LOG( CL(I, J)/(1. -Cl(I, J)) ) 
+        FCCL = R*TEMP/VM/(CL(I, J) * (1. - CL(I, J))) 
+        FCCS = R*TEMP/VM/(CS(I, J) * (1. - CS(I, J))) 
+        FCC(I, J) = FCCL*FCCS/((1.-PP)*FCCS + PP*FCCL) 
+        
+    END DO 
+    END DO 
 
-            e1 = ep2*eta*eta*(phixx + phiyy)
-            e2 = ep2*eta*(-deta)*(sin(2.*th))*(phiyy - phixx) + 2.*cos(2.*th)*phixy
-            e3 = 0.5*ep2
-            e4 = deta*deta+eta*(-v*yk*yk*cos(yk*th))
-            e5 = 2.*sin(2.*th)*phixy - phixx - phiyy - cos(2.*th)*(phiyy-phixx)
+! ------------------
+!  GOVERNING EQUATIONS 
+! ------------------
 
-            dphi = xm*(e1+e2-e3*e4*e5+fp)
+    DO I=1, MC 
+    DO J=1, NC 
+        P = PHI(0, I, J) ; C = COM(0, I, J)
 
-            d1 = ds; d2 = ds; d3 = ds; d4 = ds; d5 = ds
-
-            if (p.le.0.9) d1 = dl
-            if (phi(0,i-1,j).le.0.9) d2 = dl; if (phi(0,i+1,j).le.0.9) d3 = dl
-            if (phi(0,i,j+1).le.0.9) d4 = dl; if (phi(0,i,j-1).le.0.9) d5 = dl
-
-            fccw = 2.*d1/fcc(i,j)* d2/fcc(i-1,j) / (d1/fcc(i,j) + d2/fcc(i-1,j))
-            fcce = 2.*d1/fcc(i,j)* d3/fcc(i+1,j) / (d1/fcc(i,j) + d3/fcc(i+1,j))
-            fccs = 2.*d1/fcc(i,j)* d4/fcc(i,j+1) / (d1/fcc(i,j) + d4/fcc(i,j+1))
-            fccn = 2.*d1/fcc(i,j)* d5/fcc(i,j-1) / (d1/fcc(i,j) + d5/fcc(i,j-1))
-
-            xj1 = ( fcl(i,j) - fcl(i-1,j))/dx * fccw
-            xj2 = ( fcl(i,j) - fcl(i+1,j))/dx * fcce
-            xj3 = ( fcl(i,j) - fcl(i,j+1))/dy * fccs
-            xj4 = ( fcl(i,j) - fcl(i,j-1))/dy * fccn
-
-            dc = (xj1 + xj2)/dx + (xj3 + xj4)/dy
-
-            end if
-
-        phi(1,i,j) = p + dphi*dt; com(1,i,j) = c + dc*dt
-
-        ! print '(a,2x,e12.5)', 'dc', dc
-        ! print '(a,2x,e12.5)', 'fccw', fcc
-        ! print '(a,2x,e12.5)', 'dt', dt
-
-        if (com(1,i,j).le.0.) then
-            print '(a,2x,e12.5)', 'dc', dc
-            print '(a,2x,e12.5)', 'xj1', xj1
-            print '(a,2x,e12.5)', 'xj2', xj2
-            print '(a,2x,e12.5)', 'xj3', xj3
-            print '(a,2x,e12.5)', 'xj4', xj4
-            print '(a,2x,e12.5)', 'fccw', fccw
-            print '(a,2x,e12.5)', 'fcce', fcce
-            print '(a,2x,e12.5)', 'fccs', fccs
-            print '(a,2x,e12.5)', 'fccn', fccn
-            print '(a,2x,e12.5)', 'dt', dt
-            print '(a,2x,e12.5)', 'dt*dc', dt*dc
-            print '(a,2x,e12.5)', 'c', c
-            goto 1000
-        end if
-        end do
-    end do
-
-    print '(a,2x,e12.5)', 'dc', dc
-    print '(a,2x,e12.5)', 'xj1', xj1
-    print '(a,2x,e12.5)', 'xj2', xj2
-    print '(a,2x,e12.5)', 'xj3', xj3
-    print '(a,2x,e12.5)', 'xj4', xj4
-    print '(a,2x,e12.5)', 'fccw', fccw
-    print '(a,2x,e12.5)', 'fcce', fcce
-    print '(a,2x,e12.5)', 'fccs', fccs
-    print '(a,2x,e12.5)', 'fccn', fccn
-    print '(a,2x,e12.5)', 'dt', dt
-    print '(a,2x,e12.5)', 'dt*dc', dt*dc
-    print '(a,2x,e12.5)', 'c', c
-
-! END GOVERNING EQUAITION CALCULATIONS
-
-! BOUNDARY CONDITION
-    do i=0, m+1
-        phi(1,i,0) = phi(1,i,1); phi(1,i,n+1) = phi(1,i,n)
-        com(1,i,0) = com(1,i,1); com(1,i,n+1) = com(1,i,n)
-    end do
-
-    do j=0, n+1
-        phi(1,0,j) = phi(1,1,j); phi(1,m+1,j) = phi(1,m,j)
-        com(1,0,j) = com(1,1,j); com(1,m+1,j) = com(1,m,j)
-    end do
-
-! RENEWAL OF PHASE & CONCENTRATION FIELDS
-    do i=0,m+1
-        do j=0,n+1
-            ! if (phi(1,i,j).le.1.e-5) then
-            !     phi(0,i,j) = 0.; com(0,i,j) = cs(i,j)
-
-            ! else if (phi(1,i,j).ge.1.-1.e-5) then
-            !     phi(0,i,j) = 1.; com(0,i,j) = cl(i,j)
+! ------------------
+!  TIME SAVING 
+! ------------------
+        PD = (PHI(0, I+1, J) + PHI(0, I-1, J) + PHI(0, I, J+1) + PHI(0, I, J-1))/4. 
+        IF(PD.LE.1.E-5) THEN 
+            DPHI = 0. 
+            DC = DL*( (COM(0, I, J+1) + COM(0, I, J-1) - 2.*C)/(DY*DY) + ( (COM(0, I+1, J) + COM(0, I-1, J) - 2.*C))/(DX*DX)) 
             
-            ! else
-            !     phi(0,i,j) = phi(1,i,j); com(0,i,j) = com(1,i,j)
-            ! end if
-            phi(0,i,j) = phi(1,i,j); com(0,i,j) = com(1,i,j)
-        end do
-    end do
+        ELSE IF(PD.GE.1.-1.E-5)THEN
+            DPHI=0. 
+            DC = DS*( (COM(0, I, J+1) + COM(0, I, J-1) - 2.*C)/(DY*DY) + ( (COM(0, I+1, J) + COM(0, I-1, J) - 2.*C))/(DX*DX) ) 
+
+! --------------------
+!  NON-TIME SAVING 
+! --------------------
+        ELSE 
+            PG = 30*P*P*(1-P)*(1-P) 
+            GD = 2.*P*(1.-P)*(1.-2.*P)
+
+            GG = PG*LOG( (1. - CSE)/ (1. - CLE) * (1. - CL(I, J)) / (1. - CS(I, J))) 
+
+            FP = R*TEMP/VM*GG - W*GD
+
+        PHIX = (PHI(0, I-1, J) - PHI(0, I+1, J))/(2.*DX) 
+        PHIY = (PHI(0, I, J-1) - PHI(0, I, J+1))/(2.*DY) 
+        PHIXX = (PHI(0, I-1, J) + PHI(0, I+1, J) -2.*P) / (DX*DX) 
+        PHIYY = (PHI(0, I, J-1) + PHI(0, I, J+1) -2.*P) / (DY*DY) 
+        PHIXY = (PHI(0, I+1, J+1) + PHI(0, I-1, J-1) - PHI(0, I-1, J+1) - PHI(0, I+1, J-1))/(2.*DX*2.*DY) 
+        TH = ATAN(PHIY/(PHIX + 1.E-20)) 
+        ETA = 1. + V*COS(YK* TH) 
+        DETA = V*YK*SIN(YK*TH) 
+        E1 = EP2*ETA*ETA*(PHIXX + PHIYY) 
+        E2 = EP2*ETA*(-DETA)*(SIN(2.*TH)*(PHIYY-PHIXX)+2.*COS(2.*TH)*PHIXY) 
+        E3 = 0.5*EP2 
+        E4 = DETA*DETA + ETA*(-V*YK*YK*COS(YK*TH)) 
+        E5 = 2.*SIN(2.*TH)*PHIXY - PHIXX - PHIYY - COS(2.*TH)*(PHIYY-PHIXX) 
+        DPHI = XM*(E1 + E2 - E3*E4*E5 + FP)
+
+        D1 = DS; D2 = DS; D3 = DS; D4 = DS; D5 = DS
+
+        IF(P.LE.0.9) D1 = DL 
+        IF(PHI(0, I-1, J).LE.0.9) D2 = DL; IF(PHI(0, I+1, J).LE.0.9) D3 = DL 
+        IF(PHI(0, I, J+1).LE.0.9) D4 = DL; IF(PHI(0, I, J-1).LE.0.9) D5 = DL 
+
+        FCCW = 2.*D1/FCC(I,J)*D2/FCC(I-1,J)/(D1/FCC(I,J)+D2/FCC(I-1,J)) 
+        FCCE = 2.*D1/FCC(I,J)*D3/FCC(I+1,J)/(D1/FCC(I,J)+D3/FCC(I+1,J)) 
+        FCCS = 2.*D1/FCC(I,J)*D4/FCC(I,J+1)/(D1/FCC(I,J)+D4/FCC(I,J+1)) 
+        FCCN = 2.*D1/FCC(I,J)*D5/FCC(I,J-1)/(D1/FCC(I,J)+D5/FCC(I,J-1))
+
+        XJ1 = (-FCL(I,J)+FCL(I-1,J))/DX*FCCW 
+        XJ2 = (-FCL(I,J)+FCL(I+1,J))/DX*FCCE 
+        XJ3 = (-FCL(I,J)+FCL(I,J+1))/DY*FCCS 
+        XJ4 = (-FCL(I,J)+FCL(I,J-1))/DY*FCCN 
+
+        DC = (XJ1+XJ2)/DX+(XJ3+XJ4)/DY
+
+        END IF 
+
+            PHI(1,I,J) = P + DPHI*DT; COM(1,I,J) = C + DC*DT 
+
+    END DO 
+    END DO 
+
+!--------------------
+!  END GOVERNING EQUATION CALCULATIONS 
+!--------------------
+!  BOUDARY CONDITONS 
+!--------------------
+
+    DO I = 0, M+1 
+        PHI(1, I, 0) = PHI(1, I, 1); PHI(1, I, N+1) = PHI(1, I, N) 
+        COM(1, I, 0) = COM(1, I, 1); COM(1, I, N+1) = COM(1, I, N) 
+    END DO
+
+    DO J = 0, N+1 
+        PHI(1, 0, J) = PHI(1, 1, J); PHI(1, M+1, J) = PHI(1, M, J) 
+        COM(1, 0, J) = COM(1, 1, J); COM(1, M+1, J) = COM(1, M, J) 
+    END DO
+
+!----------------
+!  RENEWAL OF PHASE &CONCENTRATION FIELDS 
+!----------------
+    DO I=0,M+1 
+    DO J=0,N+1
+        PHI(0, I, J)=PHI(1, I, J); COM(0, I, J)=COM(1, I, J) 
+    END DO 
+    END DO 
+
+!------------------
+!  NOISE 
+!------------------
+    CALL NOISE 
+!------------------
+!  AREA SET FOR TIME SAVING 
+!------------------
+    IF(L.GE.100) CALL AREASET 
+!--------------------- 
+!  OUT PUT 
+!------------------
+    IF(MOD(L,MODSAVE).EQ.0) CALL OUTSAVE 
+!-----------------
+!  END CONDITION 
+!------------------
+    IF(PHI(0, 1, N-10).LE.0.5) GOTO 500 
+    WRITE(6,*)'CALCULATION HAS FINISHED!' 
     
-! NOISE
-    call noise
+END PROGRAM MAIN 
 
-! AREA SET FOR TIME SAVING
-    if (l.ge.100) call areaset
+!=============== 
+!  SUBRUTINE 
+!================ 
+!  READ CALCULATION CONDITION 
+!--------------------------
+SUBROUTINE CAL_COND 
 
-! OUTPUT
-    lsave = lsave + 1
-    if (mod(l,modsave).eq.0) call outsave
-    if (mod(l,modsave).eq.0) call output(lsave, cs, cl, 'cl_cs')
-    if (mod(l,modsave).eq.0) call output(lsave, fcc, fcl, 'fcl_fcs')
+    USE COMMON_V
+    IMPLICIT NONE 
+    M = 750 ! (X-0 IRECT I ON MESH NUIIBER) 
+    N = 750 !CY-DIRECTION MESH NUMBER) 
+    DX = 1.e-8 !MESH SIZE 
+    DY = 1.e-8 !MESH SIZE 
+    DL = 3.e-9 !DL 
+    DS = 3.e-13 !DS 
+    C0 = 0.0196 !INITIAL SOLUTE CONTENT 
+    TEMP = 900.0 !INITIAL TEMPERATURE 
+    TEMPMELT = 933.3 !MELTING POINT 
+    VM = 10.547e-6 !MOLER VOLUME 
+    XME = 640.0 !LIOUIDUS SLOPE 
+    KE = 0.14 !PARTITION COEFFICIENT 
+    BETA = 0.0 !KINETIC COEFFICIENT 
+    V=0.03 !ANISOTROPY EP=EP(l+V~OS(YK*THETA) 
+    YK=4.0 !ANISOTROPY 
+    SIGMA = 0.093 !INTERFACE ENERGY 
+    COMNOISE = 0.0 !NOISE 
 
-! END CONDITION
-    if (phi(0,1,n-10).le.0.5) goto 500
-    write(6,*)'CALCULATION HAS FINISHED'
+    NC = N; MC = M; DL2 = 2.0*DL/DX; DS2 = 2.0*DS/DX 
+    CLE = (TEMPMELT - TEMP)/XME; CSE = CLE*KE 
 
-    1000    print *,"CALC ERROR"     
-end program main
+END SUBROUTINE CAL_COND
 
-! ===================================================
-! SUBRUTINE
-! ===================================================
-! READ CALCULATION CONDITION
-subroutine cal_cond
-    use COMMON_V
-    implicit none
+! ---------------------
+!  INIT_COND 
+!-------------------------
+SUBROUTINE INIT_COND 
 
-    m = 750                 ! x-direction mesh number
-    n = 750                 ! y-direction mesh number
-    dx = 1.e-8              ! mesh size
-    dy = 1.e-8              ! mesh size
-    dl = 3.e-9              ! dl
-    ds = 3.e-13             ! ds
-    c0 = 0.0196             ! initial solute content
-    tmp = 900.0             ! initial temperature
-    tmpmelt = 933.3        ! melting point
-    vm = 10.547e-6          ! moler volume
-    xme = 640.0             ! liquidus slope
-    ke = 0.14               ! partition coefficient
-    beta = 0.0              ! kinetic coefficient
-    v = 0.03                ! anisotropy ep=ep(1+v*cos(yk*th))
-    yk = 4.0                ! anisotropy (yk-fold)
-    sigma = 0.093           ! interface energy
-    comnoise = 0          ! noise
+    USE COMMON_V 
+    IMPLICIT NONE
 
-    nc = n; mc = m; dl2 = 2.0*dl/dx; ds2 = 2.0*ds/dx
-    cle = (tmpmelt - tmp)/xme; cse = cle*ke
+    ALLOCATE( PHI(0:1,0:M+1,0:N+1) ) 
+    ALLOCATE( COM(0:1,0:M+1,0:N+1) ) 
     
-end subroutine cal_cond
+    DO I=1,M 
+        DO J=1,N 
+            PHI(0, I, J) = 0.; PHI(1, I, J) = 0.
+            COM(0, I, J) = C0; COM(1, I, J) = C0
+        END DO 
+    END DO 
 
-! INIT_COND
-subroutine init_cond
-    use COMMON_V
-    implicit none
+    DO I=1, TRIANGLE+5 
+        DO J=1, TRIANGLE+5 
+            IF(J.LT.(-I+TRIANGLE))THEN 
+                PHI(0, I, J) = 1.; PHI(1, I, J) = 1. 
+                COM(0, I, J) = CSE; COM(1, I, J) = CSE 
+            END IF 
+
+            IF(J.EQ.(-I+TRIANGLE))THEN 
+                PHI(0, I, J) = 0.5; PHI(1, I, J) = 0.5 
+            END IF
+
+        END DO 
+    END DO 
+     
+    DO I = 0, M+1 
+        PHI(0, I, 0) = PHI(0, I, 1); PHI(0, I, N+1) = PHI(0, I, N) 
+        COM(0, I, 0) = COM(0, I, 1); COM(0, I, N+1) = COM(0, I, N) 
+    END DO 
+     
+    DO J = 0, N+1 
+        PHI(0, 0, J) = PHI(0, 1, J); PHI(0, M+1, J)= PHI(0, M, J) 
+        COM(0, 0, J) = COM(0, 1, J); COM(0, M+1,J) = COM(0, M, J) 
+    END DO
+
+    RETURN 
+
+END SUBROUTINE INIT_COND
+
+!-------------------
+!  PF MOBILITY 
+! ------------------
+SUBROUTINE MOBILITY
+
+    USE COMMON_V 
+    IMPLICIT NONE
+
+    REAL(8)::P1,P2,PP1,PP2,FUN1,FUN2,ZETA,FCCLE,FCCSE,ALPHA 
     
-    allocate( phi(0:1, 0:m+1, 0:n+1) )
-    allocate( com(0:1, 0:m+1, 0:n+1) )
+    EP2 = EP*EP; ZETA = 0.
 
-    do i = 1, m
-        do j = 1, n
-            phi(0,i,j) = 0.; phi(1,i,j) = 0.
-            com(0,i,j) = c0; com(1,i,j) = c0
-        end do
-    end do
+    FCCLE = R*TEMP/VM/(CLE*(1.-CLE)) 
+    FCCSE = R*TEMP/VM/(CSE*(1.-CSE))
 
-    do i = 1, triangle+5
-        do j = 1, triangle+5
-            if (j.lt.(-i+triangle)) then
-                phi(0,i,j) = 1.; phi(1,i,j) = 1.
-                com(0,i,j) = cse; com(1,i,j) = cse
-            end if
+    DO P1 = 0.001, 0.998, 0.001 
+        P2 = P1 + 0.001 
+        PP1 = P1**3*(10. - 15.*P1 + 6.*P1*P1) 
+        PP2 = P2**3*(10. - 15.*P2 + 6.*P2*P2) 
+        FUN1 = PP1*(1-PP1)/( (1-PP1)*fCCSE+PP1*fCCLE )/(P1*(1.-P1)) 
+        FUN2 = PP2*(1-PP2)/( (1-PP2)*FCCSE+PP1*FCCLE )/(P2*(1.-P2)) 
+        ZETA = ZETA+(FUN1 + FUN2)*0.001/2. 
+    END DO 
 
-            if (j.eq.(-i+triangle)) then
-                phi(0,i,j) = 0.5; phi(1,i,j) = 0.5
-            end if
+    ALPHA = BETA*R*TEMP*(1-KE) / (VM*XME) 
+    XM = 1./(EP*EP/SIGMA*(ALPHA + EP/(DL*SQRT(2.*W))*ZETA*FCCSE*FCCLE*(CLE-CSE)**2 )) 
+    DT = DX**2/(5.*XM*EP**2) 
+    DT1 = DX**2/(5.*DL) 
+    DT = DMIN1(DT,DT1)
 
-        end do
-    end do
+    RETURN
 
-    do i = 0, m+1
-        phi(0,i,0) = phi(0,i,1); phi(0,i,n+1) = phi(0,i,n)
-        com(0,i,0) = com(0,i,1); com(0,i,n+1) = com(0,i,n)
-    end do
+END SUBROUTINE MOBILITY
 
-    do j = 0, n+1
-        phi(0,0,j) = phi(0,1,j); phi(0,m+1,j) = phi(0,m,j)
-        com(0,0,j) = com(0,1,j); com(0,m+1,j) = com(0,m,j)
-    end do
+! ------------------
+!  COIINOISE 
+! ------------------
+SUBROUTINE NOISE
 
-    return
-end subroutine init_cond
+    USE COMMON_V 
+    IMPLICIT NONE
 
-! PF MOBILITY
-subroutine mobilitiy
-    use COMMON_V
-    implicit none
+    REAL(8)::COUNTNOISE,COMTOT,COMDAM,CNOISE
+    INTEGER::LAM=12869,C=6925,MMU=32768,X=19724 
 
-    integer :: a
-    real(8) :: p1, p2, pp1, pp2, fun1, fun2, zeta, fccle, fccse, alpha
+    COUNTNOISE=0. ; COMTOT=0. 
 
-    ep2 = ep*ep; zeta = 0.
+    DO I = 1, MC 
+        DO J = 1, NC 
 
-    fccle = r*tmp/vm/(cle*(1.-cle))
-    fccse = r*tmp/vm/(cse*(1.-cse))
+            IF(PHI(0, I, J).GT.0.01.AND.PHI(0, I, J).LE.0.5)THEN 
+                COMDAM = COM(0, I, J)
 
-    do a = 1, 998
-        p1 = a/1000.
-        p2 = p1 + 0.001
-        pp1 = p1**3 * (10. - 15.*p1 + 6.*p1*p1)
-        pp2 = p2**3 * (10. - 15.*p2 + 6.*p2*p2)
-        fun1 = pp1*(1.-pp1) / ((1.-pp1)*fccse + pp1*fccle) / (p1*(1.-p1))
-        fun2 = pp2*(1.-pp2) / ((1.-pp2)*fccse + pp2*fccle) / (p2*(1.-p2)) !　pp1*fccleがあやしい。
-        zeta = zeta + (fun1 + fun2)*0.001/2.
-    end do
+                X = MOD( (X*LAM + C), MMU) 
+                CNOISE = (REAL(X)/MMU-0.5)*COMNOISE
 
-    alpha = beta*r*tmp*(1.-ke) / (vm*xme)
-    xm = 1./(ep*ep/sigma * (alpha+ep/(dl*sqrt(2.*W))*zeta*fccse*fccle*(cle-cse)**2))
+                COM(0, I, J) = COMDAM*(1. + CNOISE) 
+                COMTOT = COMTOT + COMDAM*CNOISE 
+                COUNTNOISE = COUNTNOISE + 1. 
+            END IF 
 
-    dt = dx**2 / (5.*xm*ep**2)
-    dt1 = dx**2 / (5.*dl)
-    dt = dmin1(dt, dt1)
+        END DO 
+    END DO
 
-    print '(a,2x,e12.5)', 'mobility', xm
+    DO I=1, MC 
+        DO J=1, NC 
 
-    return
-end subroutine mobilitiy
+            IF (PHI(0, I, J).GT.0.01 .AND. PHI(0, I, J).LE.0.5) THEN 
+                COM(0, I, J) = COM(0, I, J) - (COMTOT/COUNTNOISE) 
+            END IF 
 
+        END DO 
+    END DO 
 
-! COMNOISE
-subroutine noise
-    use COMMON_V
-    implicit none
+    DO I = 0, M+1 
+        COM(0, I, 0) = COM(0, I, 1); COM(0, I, N+1) = COM(0, I, N) 
+    END DO
 
-    real(8) :: countnoise, comtot, comdam, cnoise
-    integer :: lam = 12869, c = 6925, mmu = 32768, x = 19724
+    DO J = 0, N+1 
+        COM(0, 0, J) = COM(0, 1, J); COM(0, M+1, J) = COM(0, M, J) 
+    END DO
 
-    countnoise = 0.; comtot = 0.
+    RETURN 
 
-    do i = 1, mc
-        do j = 1, nc
-            if (phi(0,i,j).gt.0.01.and.phi(0,i,j).le.0.5) then
-                comdam = com(0,i,j)
-                
-                x = mod((x*lam+c), mmu)
-                cnoise = (real(x)/mmu - 0.5) * comnoise
+END SUBROUTINE NOISE 
 
-                com(0,i,j) = comdam*(1. + cnoise)
-                comtot = comtot + comdam*cnoise
-                countnoise = countnoise + 1
-            end if
-        end do
-    end do
+!--------------------
+!  AREA SET 
+!--------------------
+SUBROUTINE AREASET
 
-    do i = 1, mc
-        do j = 1, nc
-            if (phi(0,i,j).gt.0.01.and.phi(0,i,j).le.0.5) then
-                com(0,i,j) = com(0,i,j) - (comtot/countnoise)
-            end if
-        end do
-    end do
+    USE COMMON_V
+    IMPLICIT NONE
 
-    do i = 0, m+1
-        com(0,i,0) = com(0,i,1); com(0,i,n+1) = com(0,i,n)
-    end do
+    DO J = 1, N 
+        IF (ABS (COM(0, 1, J)/C0 - 1.).GT.1.E-5) NC = J 
+    END DO
 
-    do j = 0, n+1
-        com(0,0,j) = com(0,1,j); com(0,m+1,j) = com(0,m,j)
-    end do
-    
-    return
-end subroutine noise
+    DO I = 1, M
+        IF (ABS (COM(0, I, 1)/C0 - 1.).GT.1.E-5) MC = I 
+    END DO
 
-! AREA SET 
-subroutine areaset
-    use COMMON_V
-    implicit none
+    NC = NC + 10; MC = MC + 10
+    IF (NC.GT.N) NC = N; IF (MC.GT.M) MC = M
 
-    do j = 1, n
-        if (abs(com(0,1,j)/c0 - 1.).gt.1.e-5) nc = j
-    end do
+    RETURN 
 
-    do i = 1, m
-        if (abs(com(0,i,1)/c0 - 1.).gt.1.e-5) mc = i
-    end do
-
-    nc = nc + 10; mc = mc + 10
-    if (nc.gt.n) nc = n; if (mc.gt.m) mc = m
-
-    return
-end subroutine areaset
-
-! OUTSAVE
-subroutine outsave
-    use COMMON_V
-    implicit none
-
-    character*3 :: out_num
-    character*15 :: fpout
-    integer :: one, ten, hand
-
-    
-    one = mod(lsave, 10)
-    ten = mod(int(real(lsave)/10.), 10)
-    hand = mod(int(real(lsave)/100.), 10)
-
-    one = 48 + one; ten = 48 + ten; hand = 48 + hand;
-    out_num = char(hand)//char(ten)//char(one)
-    
-    fpout = "output"//out_num//".vtk"
-    open(101,file=fpout, err=1000)
-    write(101,'(a)') '# vtk DataFile Version 3.0'
-    write(101,'(a)') 'output.vtk'
-    write(101,'(a)') 'ASCII'
-    write(101,'(a)') 'DATASET STRUCTURED_POINTS'
-    write(101,'(a,3i5)') 'DIMENSIONS',m,n,1
-    write(101,'(a,3f4.1)')'ORIGIN' ,0.0,0.0,0.0
-    write(101,'(a,3i2)')'ASPECT_RATIO',1,1,1
-    write(101,'(a,1i11)')'POINT_DATA',m*n*1
-    write(101,'(a)')'SCALARS concentration double'
-    write(101,'(a)')'LOOKUP_TABLE default'
-
-    do j=1,n
-        do i=1,m
-            write(101,*) com(0,i,j)
-        end do
-    end do
-
-    write(101,'(a)')'SCALARS phase_field double'
-    write(101,'(a)')'LOOKUP_TABLE default'
-
-    do j=1,n
-        do i=1,m
-            write(101,*) phi(0,i,j)
-        end do
-    end do
-
-    close(101)
-    return
-
-! 300     format(e12.5)
-1000    write(6,*)'ERROR IN FILE OPEN'
-
-end subroutine outsave
-
-
-!===================================
-! file output of results
-! VTK file can be visualized by ParaView software.
-! ParaView can be downloaded at https://www.paraview.org/
-!===================================
-subroutine output(iout,cc,pp,name)
-    use COMMON_V
-    implicit none
-   
-    integer :: iout
-    double precision, dimension(m,n) :: pp
-    double precision, dimension(m,n) :: cc
-    
-    character :: name
-    character*30::filename
-    ! integer :: m,n
-   
-    write(filename,'(a,i4.4,a)') name,iout,'.vtk'
-    open(101,file=filename)
-    write(101,'(a)') '# vtk DataFile Version 3.0'
-    write(101,'(a)') 'output.vtk'
-    write(101,'(a)') 'ASCII'
-    write(101,'(a)') 'DATASET STRUCTURED_POINTS'
-    write(101,'(a,3i5)') 'DIMENSIONS',m,n,1
-    write(101,'(a,3f4.1)')'ORIGIN' ,0.0,0.0,0.0
-    write(101,'(a,3i2)')'ASPECT_RATIO',1,1,1
-    write(101,'(a,1i11)')'POINT_DATA',m*n*1
-    write(101,'(a)')'SCALARS concentration double'
-    write(101,'(a)')'LOOKUP_TABLE default'
-     do j=1,n
-        do i=1,m
-            write(101,*) cc(i,j)
-        end do
-     end do
-    write(101,'(a)')'SCALARS phase_field double'
-    write(101,'(a)')'LOOKUP_TABLE default'
-    do j=1,n
-        do i=1,m
-       write(101,*) pp(i,j)
-      end do
-     end do
-     close(101)
-   
-    return
-   end
-
-
+END SUBROUTINE AREASET
  
 
+!---------
+!  OUTSAVE 
+!----------------
+SUBROUTINE OUTSAVE 
+
+    USE COMMON_V 
+    IMPLICIT NONE 
+
+    CHARACTER*3::OUT_NUM 
+    CHARACTER*30::FPOUT 
+    INTEGER::ONE,TEN,HAND
+
+    LSAVE = LSAVE + 1 
+    ONE = MOD(LSAVE, 10) 
+    TEN = MOD(INT(REAL(LSAVE)/10.), 10) 
+    HAND = MOD(INT(REAL(LSAVE)/100.), 10)
+
+    ONE = 48 + ONE; TEN = 48 + TEN; HAND = 48 + HAND; 
+    OUT_NUM = CHAR(HAND)//CHAR(TEN)//CHAR(ONE)
+
+    FPOUT = "./calc_result/output"//OUT_NUM//".vtk" 
+    OPEN(101, FILE=FPOUT, ERR=1000)
+    write(101,'(a)') '# vtk DataFile Version 3.0'
+    write(101,'(a)') 'output.vtk'
+    write(101,'(a)') 'ASCII'
+    write(101,'(a)') 'DATASET STRUCTURED_POINTS'
+    write(101,'(a,3i5)') 'DIMENSIONS',M,N,1
+    write(101,'(a,3f4.1)')'ORIGIN' ,0.0,0.0,0.0
+    write(101,'(a,3i2)')'ASPECT_RATIO',1,1,1
+    write(101,'(a,1i11)')'POINT_DATA',M*N*1
+    write(101,'(a)')'SCALARS concentration double'
+    write(101,'(a)')'LOOKUP_TABLE default' 
+
+    DO J = 1, N
+        DO I = 1, M 
+            WRITE (101,*) COM(0, I, J) 
+        END DO 
+    END DO
+
+    write(101,'(a)')'SCALARS phase_field double'
+    write(101,'(a)')'LOOKUP_TABLE default'
+
+    do J = 1, N
+        do I = 1, M
+            WRITE(101,*) PHI(0, I, J)
+        END DO
+    END DO
+
+    CLOSE(101)
+    WRITE(6,*) "SAVING! "//OUT_NUM//"STEPS"
+
+    RETURN
+
+410 FORMAT(I4, I4, I10) 
+300 FORMAT(I5, I5, E12.5 ,E12.5) 
+1000 WRITE(6,*)'ERROR IN FILE OPEN'
+
+END SUBROUTINE OUTSAVE
 
 
 
 
+!---------
+!  OUTSAVE 
+!----------------
+! SUBROUTINE OUTSAVE 
+
+!     USE COMMON_V 
+!     IMPLICIT NONE 
+
+!     CHARACTER*3::OUT_NUM 
+!     CHARACTER*15::FPOUT 
+!     INTEGER::ONE,TEN,HAND
+
+!     LSAVE = LSAVE + 1 
+!     ONE = MOD(LSAVE, 10) 
+!     TEN = MOD(INT(REAL(LSAVE)/10.), 10) 
+!     HAND = MOD(INT(REAL(LSAVE)/100.), 10)
+
+!     ONE = 48 + ONE; TEN = 48 + TEN; HAND = 48 + HAND; 
+!     OUT_NUM = CHAR(HAND)//CHAR(TEN)//CHAR(ONE)
+
+!     FPOUT = "output"//OUT_NUM//".dat" 
+!     OPEN(14, FILE=FPOUT, ERR=1000) 
+
+!     WRITE(14, 410) MC,NC,L
+
+!     DO I = 1, MC 
+!         DO J = 1, NC 
+!             WRITE (14, 300) I, J, PHI(0, I, J), COM(0, I, J) 
+!         END DO 
+!     END DO
+
+!     CLOSE(14)
+
+!     RETURN
+
+! 410 FORMAT(I4, I4, I10) 
+! 300 FORMAT(I5, I5, E12.5 ,E12.5) 
+! 1000 WRITE(6,*)'ERROR IN FILE OPEN'
+
+! END SUBROUTINE OUTSAVE
+
+
+! OUTSAVE
+! subroutine outsave
+!     use COMMON_V
+!     implicit none
+
+!     character*3 :: out_num
+!     character*15 :: fpout
+!     integer :: one, ten, hand
+
+    
+!     one = mod(lsave, 10)
+!     ten = mod(int(real(lsave)/10.), 10)
+!     hand = mod(int(real(lsave)/100.), 10)
+
+!     one = 48 + one; ten = 48 + ten; hand = 48 + hand;
+!     out_num = char(hand)//char(ten)//char(one)
+    
+!     fpout = "output"//out_num//".vtk"
+!     open(101,file=fpout, err=1000)
+!     write(101,'(a)') '# vtk DataFile Version 3.0'
+!     write(101,'(a)') 'output.vtk'
+!     write(101,'(a)') 'ASCII'
+!     write(101,'(a)') 'DATASET STRUCTURED_POINTS'
+!     write(101,'(a,3i5)') 'DIMENSIONS',m,n,1
+!     write(101,'(a,3f4.1)')'ORIGIN' ,0.0,0.0,0.0
+!     write(101,'(a,3i2)')'ASPECT_RATIO',1,1,1
+!     write(101,'(a,1i11)')'POINT_DATA',m*n*1
+!     write(101,'(a)')'SCALARS concentration double'
+!     write(101,'(a)')'LOOKUP_TABLE default'
+
+!     do j=1,n
+!         do i=1,m
+!             write(101,*) com(0,i,j)
+!         end do
+!     end do
+
+!     write(101,'(a)')'SCALARS phase_field double'
+!     write(101,'(a)')'LOOKUP_TABLE default'
+
+!     do j=1,n
+!         do i=1,m
+!             write(101,*) phi(0,i,j)
+!         end do
+!     end do
+
+!     close(101)
+!     return
+
+! ! 300     format(e12.5)
+! 1000    write(6,*)'ERROR IN FILE OPEN'
+
+! end subroutine outsave
